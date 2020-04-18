@@ -7,12 +7,14 @@ Despite all the recent hype, setting up a new TypeScript (x React) library can b
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [Features](#features)
 - [Quick Start](#quick-start)
   - [`npm start` or `yarn start`](#npm-start-or-yarn-start)
   - [`npm run build` or `yarn build`](#npm-run-build-or-yarn-build)
   - [`npm test` or `yarn test`](#npm-test-or-yarn-test)
   - [`npm run lint` or `yarn lint`](#npm-run-lint-or-yarn-lint)
+  - [`prepare` script](#prepare-script)
 - [Optimizations](#optimizations)
   - [Development-only Expressions + Treeshaking](#development-only-expressions--treeshaking)
     - [Rollup Treeshaking](#rollup-treeshaking)
@@ -33,8 +35,10 @@ Despite all the recent hype, setting up a new TypeScript (x React) library can b
   - [`tsdx build`](#tsdx-build)
   - [`tsdx test`](#tsdx-test)
   - [`tsdx lint`](#tsdx-lint)
+- [Contributing](#contributing)
 - [Author](#author)
 - [License](#license)
+- [Contributors ✨](#contributors-)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -54,11 +58,14 @@ TSDX comes with the "battery-pack included" and is part of a complete TypeScript
 
 ## Quick Start
 
-```
+```bash
 npx tsdx create mylib
 cd mylib
 yarn start
 ```
+
+_Requires Node `>= 10`._
+
 
 That's it. You don't need to worry about setting up Typescript or Rollup or Jest or other plumbing. Just start editing `src/index.ts` and go!
 
@@ -81,13 +88,17 @@ The package is optimized and bundled with Rollup into multiple formats (CommonJS
 
 ### `npm test` or `yarn test`
 
-Runs the test watcher (Jest) in an interactive mode.
-By default, runs tests related to files changed since the last commit.
+Runs your tests using Jest.
 
 ### `npm run lint` or `yarn lint`
 
 Runs Eslint with Prettier on .ts and .tsx files.
 If you want to customize eslint you can add an `eslint` block to your package.json, or you can run `yarn lint --write-file` and edit the generated `.eslintrc.js` file.
+
+### `prepare` script
+
+Bundles and packages to the `dist` folder.
+Runs automatically when you run either `npm publish` or `yarn publish`. The `prepare` script will run the equivalent of `npm run build` or `yarn build`. It will also be run if your module is installed as a git dependency (ie: `"mymodule": "github:myuser/mymodule#some-branch"`) so it can be depended on without checking the transpiled code into git.
 
 ## Optimizations
 
@@ -291,6 +302,9 @@ _TODO: Simple guide to host error codes to be completed_
 
 ### Rollup
 
+> **❗⚠️❗ Warning**: <br>
+> These modifications will override the default behavior and configuration of TSDX. As such they can invalidate internal guarantees and assumptions. These types of changes can break internal behavior and can be very fragile against updates. Use with discretion!
+
 TSDX uses Rollup under the hood. The defaults are solid for most packages (Formik uses the defaults!). However, if you do wish to alter the rollup configuration, you can do so by creating a file called `tsdx.config.js` at the root of your project like so:
 
 ```js
@@ -309,7 +323,7 @@ The `options` object contains the following:
 export interface TsdxOptions {
   // path to file
   input: string;
-  // Safe name (for UMD)
+  // Name of package
   name: string;
   // JS target
   target: 'node' | 'browser';
@@ -319,12 +333,14 @@ export interface TsdxOptions {
   env: 'development' | 'production';
   // Path to tsconfig file
   tsconfig?: string;
-  // Is opt-in invariant error extraction active?
+  // Is error extraction running?
   extractErrors?: boolean;
   // Is minifying?
   minify?: boolean;
   // Is this the very first rollup config (and thus should one-off metadata be extracted)?
   writeMeta?: boolean;
+  // Only transpile, do not type check (makes compilation faster)
+  transpileOnly?: boolean;
 }
 ```
 
@@ -367,7 +383,7 @@ TSDX is ripped out of [Formik's](https://github.com/jaredpalmer/formik) build to
 
 - TSDX includes out-of-the-box test running via Jest
 - TSDX includes a bootstrap command and default package template
-- TSDX is 100% TypeScript focused. While yes, TSDX does use Babel to run a few optimizations (related to treeshaking and lodash), it does not support custom babel configurations.
+- TSDX is 100% TypeScript focused
 - TSDX outputs distinct development and production builds (like React does) for CJS and UMD builds. This means you can include rich error messages and other dev-friendly goodies without sacrificing final bundle size.
 
 ## API Reference
@@ -388,6 +404,11 @@ Options
   --format              Specify module format(s)  (default cjs,esm)
   --tsconfig            Specify your custom tsconfig path (default <root-folder>/tsconfig.json)
   --verbose             Keep outdated console output in watch mode instead of clearing the screen
+  --onFirstSuccess      Run a command on the first successful build
+  --onSuccess           Run a command on a successful build
+  --onFailure           Run a command on a failed build
+  --noClean             Don't clean the dist folder
+  --transpileOnly       Skip type checking
   -h, --help            Displays this message
 
 Examples
@@ -395,7 +416,12 @@ Examples
   $ tsdx watch --target node
   $ tsdx watch --name Foo
   $ tsdx watch --format cjs,esm,umd
-  $ tsdx build --tsconfig ./tsconfig.foo.json
+  $ tsdx watch --tsconfig ./tsconfig.foo.json
+  $ tsdx watch --noClean
+  $ tsdx watch --onFirstSuccess "echo The first successful build!"
+  $ tsdx watch --onSuccess "echo Successful build!"
+  $ tsdx watch --onFailure "echo The build failed!"
+  $ tsdx watch --transpileOnly
 ```
 
 ### `tsdx build`
@@ -414,6 +440,7 @@ Options
   --format              Specify module format(s)  (default cjs,esm)
   --extractErrors       Opt-in to extracting invariant error codes
   --tsconfig            Specify your custom tsconfig path (default <root-folder>/tsconfig.json)
+  --transpileOnly       Skip type checking
   -h, --help            Displays this message
 
 Examples
@@ -423,11 +450,22 @@ Examples
   $ tsdx build --format cjs,esm,umd
   $ tsdx build --extractErrors
   $ tsdx build --tsconfig ./tsconfig.foo.json
+  $ tsdx build --transpileOnly
 ```
 
 ### `tsdx test`
 
-This runs Jest v24.x in watch mode. See [https://jestjs.io](https://jestjs.io) for options. If you are using the React template, jest uses the flag `--env=jsdom` by default.
+This runs Jest v24.x. See [https://jestjs.io](https://jestjs.io) for options. For example, if you would like to run in watch mode, you can run `tsdx test --watch`. So you could set up your `package.json` `scripts` like:
+
+```json
+{
+  "scripts": {
+    "test": "tsdx test",
+    "test:watch": "tsdx test --watch",
+    "test:coverage": "tsdx test --coverage"
+  }
+}
+```
 
 ### `tsdx lint`
 
@@ -442,6 +480,7 @@ Options
   --fix               Fixes fixable errors and warnings
   --ignore-pattern    Ignore a pattern
   --write-file        Write the config file locally
+  --report-file       Write JSON report to file locally
   -h, --help          Displays this message
 
 Examples
@@ -449,7 +488,12 @@ Examples
   $ tsdx lint src --fix
   $ tsdx lint src test --ignore-pattern test/foo.ts
   $ tsdx lint src --write-file
+  $ tsdx lint src --report-file report.json
 ```
+
+## Contributing
+
+Please see the [Contributing Guidelines](./CONTRIBUTING.md).
 
 ## Author
 
@@ -464,16 +508,106 @@ Examples
 Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
 <table>
-  <tr>   
-    <td align="center"><a href="https://jaredpalmer.com"><img src="https://avatars2.githubusercontent.com/u/4060187?v=4" width="100px;" alt="Jared Palmer"/><br /><sub><b>Jared Palmer</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=jaredpalmer" title="Documentation">📖</a> <a href="#design-jaredpalmer" title="Design">🎨</a> <a href="#review-jaredpalmer" title="Reviewed Pull Requests">👀</a> <a href="#tool-jaredpalmer" title="Tools">🔧</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=jaredpalmer" title="Tests">⚠️</a> <a href="#maintenance-jaredpalmer" title="Maintenance">🚧</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=jaredpalmer" title="Code">💻</a></td>
-    <td align="center"><a href="https://twitter.com/swyx"><img src="https://avatars1.githubusercontent.com/u/6764957?v=4" width="100px;" alt="swyx"/><br /><sub><b>swyx</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Asw-yx" title="Bug reports">🐛</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=sw-yx" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=sw-yx" title="Documentation">📖</a> <a href="#design-sw-yx" title="Design">🎨</a> <a href="#ideas-sw-yx" title="Ideas, Planning, & Feedback">🤔</a> <a href="#infra-sw-yx" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="#maintenance-sw-yx" title="Maintenance">🚧</a> <a href="#review-sw-yx" title="Reviewed Pull Requests">👀</a></td>
-    <td align="center"><a href="https://jasonet.co"><img src="https://avatars1.githubusercontent.com/u/10660468?v=4" width="100px;" alt="Jason Etcovitch"/><br /><sub><b>Jason Etcovitch</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3AJasonEtco" title="Bug reports">🐛</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=JasonEtco" title="Tests">⚠️</a></td>
-     <td align="center"><a href="https://github.com/skvale"><img src="https://avatars0.githubusercontent.com/u/5314713?v=4" width="100px;" alt="Sam Kvale"/><br /><sub><b>Sam Kvale</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=skvale" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=skvale" title="Tests">⚠️</a> <a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Askvale" title="Bug reports">🐛</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=skvale" title="Documentation">📖</a></td>
+  <tr>
+    <td align="center"><a href="https://jaredpalmer.com"><img src="https://avatars2.githubusercontent.com/u/4060187?v=4" width="100px;" alt=""/><br /><sub><b>Jared Palmer</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=jaredpalmer" title="Documentation">📖</a> <a href="#design-jaredpalmer" title="Design">🎨</a> <a href="https://github.com/jaredpalmer/tsdx/pulls?q=is%3Apr+reviewed-by%3Ajaredpalmer" title="Reviewed Pull Requests">👀</a> <a href="#tool-jaredpalmer" title="Tools">🔧</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=jaredpalmer" title="Tests">⚠️</a> <a href="#maintenance-jaredpalmer" title="Maintenance">🚧</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=jaredpalmer" title="Code">💻</a></td>
+    <td align="center"><a href="https://twitter.com/swyx"><img src="https://avatars1.githubusercontent.com/u/6764957?v=4" width="100px;" alt=""/><br /><sub><b>swyx</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Asw-yx" title="Bug reports">🐛</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=sw-yx" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=sw-yx" title="Documentation">📖</a> <a href="#design-sw-yx" title="Design">🎨</a> <a href="#ideas-sw-yx" title="Ideas, Planning, & Feedback">🤔</a> <a href="#infra-sw-yx" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="#maintenance-sw-yx" title="Maintenance">🚧</a> <a href="https://github.com/jaredpalmer/tsdx/pulls?q=is%3Apr+reviewed-by%3Asw-yx" title="Reviewed Pull Requests">👀</a></td>
+    <td align="center"><a href="https://jasonet.co"><img src="https://avatars1.githubusercontent.com/u/10660468?v=4" width="100px;" alt=""/><br /><sub><b>Jason Etcovitch</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3AJasonEtco" title="Bug reports">🐛</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=JasonEtco" title="Tests">⚠️</a></td>
+    <td align="center"><a href="https://github.com/skvale"><img src="https://avatars0.githubusercontent.com/u/5314713?v=4" width="100px;" alt=""/><br /><sub><b>Sam Kvale</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=skvale" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=skvale" title="Tests">⚠️</a> <a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Askvale" title="Bug reports">🐛</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=skvale" title="Documentation">📖</a> <a href="https://github.com/jaredpalmer/tsdx/pulls?q=is%3Apr+reviewed-by%3Askvale" title="Reviewed Pull Requests">👀</a> <a href="#ideas-skvale" title="Ideas, Planning, & Feedback">🤔</a> <a href="#question-skvale" title="Answering Questions">💬</a></td>
+    <td align="center"><a href="https://lucaspolito.dev/"><img src="https://avatars3.githubusercontent.com/u/41299650?v=4" width="100px;" alt=""/><br /><sub><b>Lucas Polito</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=lpolito" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=lpolito" title="Documentation">📖</a> <a href="#question-lpolito" title="Answering Questions">💬</a></td>
+    <td align="center"><a href="https://skalt.github.io"><img src="https://avatars0.githubusercontent.com/u/10438373?v=4" width="100px;" alt=""/><br /><sub><b>Steven Kalt</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=SKalt" title="Code">💻</a></td>
+    <td align="center"><a href="https://twitter.com/harry_hedger"><img src="https://avatars2.githubusercontent.com/u/2524280?v=4" width="100px;" alt=""/><br /><sub><b>Harry Hedger</b></sub></a><br /><a href="#ideas-hedgerh" title="Ideas, Planning, & Feedback">🤔</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=hedgerh" title="Documentation">📖</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=hedgerh" title="Code">💻</a> <a href="#question-hedgerh" title="Answering Questions">💬</a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/arthurdenner"><img src="https://avatars0.githubusercontent.com/u/13774309?v=4" width="100px;" alt=""/><br /><sub><b>Arthur Denner</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Aarthurdenner" title="Bug reports">🐛</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=arthurdenner" title="Code">💻</a> <a href="#question-arthurdenner" title="Answering Questions">💬</a></td>
+    <td align="center"><a href="https://carlfoster.io"><img src="https://avatars2.githubusercontent.com/u/5793483?v=4" width="100px;" alt=""/><br /><sub><b>Carl</b></sub></a><br /><a href="#ideas-Carl-Foster" title="Ideas, Planning, & Feedback">🤔</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=Carl-Foster" title="Documentation">📖</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=Carl-Foster" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=Carl-Foster" title="Tests">⚠️</a> <a href="#question-Carl-Foster" title="Answering Questions">💬</a></td>
+    <td align="center"><a href="http://iGLOO.be"><img src="https://avatars0.githubusercontent.com/u/900947?v=4" width="100px;" alt=""/><br /><sub><b>Loïc Mahieu</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=LoicMahieu" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=LoicMahieu" title="Tests">⚠️</a></td>
+    <td align="center"><a href="https://github.com/sebald"><img src="https://avatars3.githubusercontent.com/u/985701?v=4" width="100px;" alt=""/><br /><sub><b>Sebastian Sebald</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=sebald" title="Documentation">📖</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=sebald" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=sebald" title="Tests">⚠️</a></td>
+    <td align="center"><a href="https://twitter.com/karlhorky"><img src="https://avatars2.githubusercontent.com/u/1935696?v=4" width="100px;" alt=""/><br /><sub><b>Karl Horky</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=karlhorky" title="Documentation">📖</a> <a href="#ideas-karlhorky" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://ghuser.io/jamesgeorge007"><img src="https://avatars2.githubusercontent.com/u/25279263?v=4" width="100px;" alt=""/><br /><sub><b>James George</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=jamesgeorge007" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://twitter.com/agilgur5"><img src="https://avatars3.githubusercontent.com/u/4970083?v=4" width="100px;" alt=""/><br /><sub><b>Anton Gilgur</b></sub></a><br /><a href="#maintenance-agilgur5" title="Maintenance">🚧</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=agilgur5" title="Documentation">📖</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=agilgur5" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Aagilgur5" title="Bug reports">🐛</a> <a href="#example-agilgur5" title="Examples">💡</a> <a href="#ideas-agilgur5" title="Ideas, Planning, & Feedback">🤔</a> <a href="#question-agilgur5" title="Answering Questions">💬</a> <a href="https://github.com/jaredpalmer/tsdx/pulls?q=is%3Apr+reviewed-by%3Aagilgur5" title="Reviewed Pull Requests">👀</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=agilgur5" title="Tests">⚠️</a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://kylemh.com"><img src="https://avatars1.githubusercontent.com/u/9523719?v=4" width="100px;" alt=""/><br /><sub><b>Kyle Holmberg</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=kylemh" title="Code">💻</a> <a href="#example-kylemh" title="Examples">💡</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=kylemh" title="Tests">⚠️</a></td>
+    <td align="center"><a href="https://github.com/sisp"><img src="https://avatars1.githubusercontent.com/u/2206639?v=4" width="100px;" alt=""/><br /><sub><b>Sigurd Spieckermann</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Asisp" title="Bug reports">🐛</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=sisp" title="Code">💻</a></td>
+    <td align="center"><a href="https://www.selbekk.io"><img src="https://avatars1.githubusercontent.com/u/1307267?v=4" width="100px;" alt=""/><br /><sub><b>Kristofer Giltvedt Selbekk</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=selbekk" title="Code">💻</a></td>
+    <td align="center"><a href="https://tomasehrlich.cz"><img src="https://avatars2.githubusercontent.com/u/827862?v=4" width="100px;" alt=""/><br /><sub><b>Tomáš Ehrlich</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Atricoder42" title="Bug reports">🐛</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=tricoder42" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/kyle-johnson"><img src="https://avatars3.githubusercontent.com/u/1007162?v=4" width="100px;" alt=""/><br /><sub><b>Kyle Johnson</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Akyle-johnson" title="Bug reports">🐛</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=kyle-johnson" title="Code">💻</a></td>
+    <td align="center"><a href="http://www.etiennedeladonchamps.fr/"><img src="https://avatars3.githubusercontent.com/u/14336608?v=4" width="100px;" alt=""/><br /><sub><b>Etienne Dldc</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Aetienne-dldc" title="Bug reports">🐛</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=etienne-dldc" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=etienne-dldc" title="Tests">⚠️</a></td>
+    <td align="center"><a href="https://github.com/fknop"><img src="https://avatars2.githubusercontent.com/u/6775689?v=4" width="100px;" alt=""/><br /><sub><b>Florian Knop</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Afknop" title="Bug reports">🐛</a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/gndelia"><img src="https://avatars1.githubusercontent.com/u/352474?v=4" width="100px;" alt=""/><br /><sub><b>Gonzalo D'Elia</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=gndelia" title="Code">💻</a></td>
+    <td align="center"><a href="https://patreon.com/aleclarson"><img src="https://avatars2.githubusercontent.com/u/1925840?v=4" width="100px;" alt=""/><br /><sub><b>Alec Larson</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=aleclarson" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/pulls?q=is%3Apr+reviewed-by%3Aaleclarson" title="Reviewed Pull Requests">👀</a> <a href="#ideas-aleclarson" title="Ideas, Planning, & Feedback">🤔</a> <a href="#question-aleclarson" title="Answering Questions">💬</a></td>
+    <td align="center"><a href="http://cantaloupesys.com/"><img src="https://avatars2.githubusercontent.com/u/277214?v=4" width="100px;" alt=""/><br /><sub><b>Justin Grant</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Ajustingrant" title="Bug reports">🐛</a> <a href="#ideas-justingrant" title="Ideas, Planning, & Feedback">🤔</a> <a href="#question-justingrant" title="Answering Questions">💬</a></td>
+    <td align="center"><a href="http://n3tr.com"><img src="https://avatars3.githubusercontent.com/u/155392?v=4" width="100px;" alt=""/><br /><sub><b>Jirat Ki.</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=n3tr" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=n3tr" title="Tests">⚠️</a> <a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3An3tr" title="Bug reports">🐛</a></td>
+    <td align="center"><a href="http://natemoo.re"><img src="https://avatars0.githubusercontent.com/u/7118177?v=4" width="100px;" alt=""/><br /><sub><b>Nate Moore</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=natemoo-re" title="Code">💻</a> <a href="#ideas-natemoo-re" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://twitter.com/diegohaz"><img src="https://avatars3.githubusercontent.com/u/3068563?v=4" width="100px;" alt=""/><br /><sub><b>Haz</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=diegohaz" title="Documentation">📖</a></td>
+    <td align="center"><a href="http://bastibuck.de"><img src="https://avatars1.githubusercontent.com/u/6306291?v=4" width="100px;" alt=""/><br /><sub><b>Basti Buck</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=bastibuck" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Abastibuck" title="Bug reports">🐛</a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://pablosz.tech"><img src="https://avatars3.githubusercontent.com/u/8672915?v=4" width="100px;" alt=""/><br /><sub><b>Pablo Saez</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=PabloSzx" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3APabloSzx" title="Bug reports">🐛</a></td>
+    <td align="center"><a href="http://www.twitter.com/jake_gavin"><img src="https://avatars2.githubusercontent.com/u/5965895?v=4" width="100px;" alt=""/><br /><sub><b>Jake Gavin</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Ajakegavin" title="Bug reports">🐛</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=jakegavin" title="Code">💻</a></td>
+    <td align="center"><a href="https://grantforrest.dev"><img src="https://avatars1.githubusercontent.com/u/2829772?v=4" width="100px;" alt=""/><br /><sub><b>Grant Forrest</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=a-type" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=a-type" title="Tests">⚠️</a> <a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Aa-type" title="Bug reports">🐛</a></td>
+    <td align="center"><a href="https://sebastienlorber.com/"><img src="https://avatars0.githubusercontent.com/u/749374?v=4" width="100px;" alt=""/><br /><sub><b>Sébastien Lorber</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=slorber" title="Code">💻</a></td>
+    <td align="center"><a href="https://kirjai.com"><img src="https://avatars1.githubusercontent.com/u/9858620?v=4" width="100px;" alt=""/><br /><sub><b>Kirils Ladovs</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=kirjai" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://github.com/enesTufekci"><img src="https://avatars3.githubusercontent.com/u/16020295?v=4" width="100px;" alt=""/><br /><sub><b>Enes Tüfekçi</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=enesTufekci" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=enesTufekci" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://twitter.com/IAmTrySound"><img src="https://avatars0.githubusercontent.com/u/5635476?v=4" width="100px;" alt=""/><br /><sub><b>Bogdan Chadkin</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/pulls?q=is%3Apr+reviewed-by%3ATrySound" title="Reviewed Pull Requests">👀</a> <a href="#question-TrySound" title="Answering Questions">💬</a> <a href="#ideas-TrySound" title="Ideas, Planning, & Feedback">🤔</a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/FredyC"><img src="https://avatars0.githubusercontent.com/u/1096340?v=4" width="100px;" alt=""/><br /><sub><b>Daniel K.</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=FredyC" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=FredyC" title="Documentation">📖</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=FredyC" title="Tests">⚠️</a> <a href="#ideas-FredyC" title="Ideas, Planning, & Feedback">🤔</a> <a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3AFredyC" title="Bug reports">🐛</a></td>
+    <td align="center"><a href="http://www.quentin-sommer.com"><img src="https://avatars2.githubusercontent.com/u/9129496?v=4" width="100px;" alt=""/><br /><sub><b>Quentin Sommer</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=quentin-sommer" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://hyan.com.br"><img src="https://avatars3.githubusercontent.com/u/5044101?v=4" width="100px;" alt=""/><br /><sub><b>Hyan Mandian</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=hyanmandian" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=hyanmandian" title="Tests">⚠️</a></td>
+    <td align="center"><a href="https://twitter.com/dance2die"><img src="https://avatars1.githubusercontent.com/u/8465237?v=4" width="100px;" alt=""/><br /><sub><b>Sung M. Kim</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Adance2die" title="Bug reports">🐛</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=dance2die" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/johnrjj"><img src="https://avatars0.githubusercontent.com/u/1103963?v=4" width="100px;" alt=""/><br /><sub><b>John Johnson</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=johnrjj" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=johnrjj" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://github.com/jooohn"><img src="https://avatars0.githubusercontent.com/u/2661835?v=4" width="100px;" alt=""/><br /><sub><b>Jun Tomioka</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=jooohn" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=jooohn" title="Tests">⚠️</a></td>
+    <td align="center"><a href="https://kunst.com.br"><img src="https://avatars2.githubusercontent.com/u/8649362?v=4" width="100px;" alt=""/><br /><sub><b>Leonardo Dino</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=leonardodino" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Aleonardodino" title="Bug reports">🐛</a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://honzabrecka.com"><img src="https://avatars3.githubusercontent.com/u/1021827?v=4" width="100px;" alt=""/><br /><sub><b>Honza Břečka</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=honzabrecka" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Ahonzabrecka" title="Bug reports">🐛</a></td>
+    <td align="center"><a href="http://chatlayer.ai"><img src="https://avatars1.githubusercontent.com/u/4059732?v=4" width="100px;" alt=""/><br /><sub><b>Ward Loos</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=wrdls" title="Code">💻</a> <a href="#ideas-wrdls" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://github.com/bbugh"><img src="https://avatars3.githubusercontent.com/u/438465?v=4" width="100px;" alt=""/><br /><sub><b>Brian Bugh</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=bbugh" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Abbugh" title="Bug reports">🐛</a></td>
+    <td align="center"><a href="https://github.com/ccarse"><img src="https://avatars2.githubusercontent.com/u/1965943?v=4" width="100px;" alt=""/><br /><sub><b>Cody Carse</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=ccarse" title="Documentation">📖</a></td>
+    <td align="center"><a href="http://sadsa.github.io"><img src="https://avatars0.githubusercontent.com/u/3200576?v=4" width="100px;" alt=""/><br /><sub><b>Josh Biddick</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=sadsa" title="Code">💻</a></td>
+    <td align="center"><a href="http://albizures.com"><img src="https://avatars3.githubusercontent.com/u/6843073?v=4" width="100px;" alt=""/><br /><sub><b>Jose Albizures</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=albizures" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=albizures" title="Tests">⚠️</a> <a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Aalbizures" title="Bug reports">🐛</a></td>
+    <td align="center"><a href="https://netzwerg.ch"><img src="https://avatars3.githubusercontent.com/u/439387?v=4" width="100px;" alt=""/><br /><sub><b>Rahel Lüthy</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=netzwerg" title="Documentation">📖</a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://fabulas.io"><img src="https://avatars1.githubusercontent.com/u/14793389?v=4" width="100px;" alt=""/><br /><sub><b>Michael Edelman </b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=medelman17" title="Code">💻</a> <a href="#ideas-medelman17" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://tunnckoCore.com"><img src="https://avatars3.githubusercontent.com/u/5038030?v=4" width="100px;" alt=""/><br /><sub><b>Charlike Mike Reagent</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/pulls?q=is%3Apr+reviewed-by%3AtunnckoCore" title="Reviewed Pull Requests">👀</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=tunnckoCore" title="Code">💻</a> <a href="#ideas-tunnckoCore" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://github.com/wessberg"><img src="https://avatars0.githubusercontent.com/u/20454213?v=4" width="100px;" alt=""/><br /><sub><b>Frederik Wessberg</b></sub></a><br /><a href="#question-wessberg" title="Answering Questions">💬</a></td>
+    <td align="center"><a href="http://elad.ossadon.com"><img src="https://avatars0.githubusercontent.com/u/51488?v=4" width="100px;" alt=""/><br /><sub><b>Elad Ossadon</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=elado" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=elado" title="Tests">⚠️</a> <a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Aelado" title="Bug reports">🐛</a></td>
+    <td align="center"><a href="https://github.com/third774"><img src="https://avatars3.githubusercontent.com/u/8732191?v=4" width="100px;" alt=""/><br /><sub><b>Kevin Kipp</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=third774" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/mfolnovic"><img src="https://avatars3.githubusercontent.com/u/20919?v=4" width="100px;" alt=""/><br /><sub><b>Matija Folnovic</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=mfolnovic" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=mfolnovic" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://github.com/Aidurber"><img src="https://avatars1.githubusercontent.com/u/5732291?v=4" width="100px;" alt=""/><br /><sub><b>Andrew</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=Aidurber" title="Code">💻</a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="http://audiolion.github.io"><img src="https://avatars1.githubusercontent.com/u/2430381?v=4" width="100px;" alt=""/><br /><sub><b>Ryan Castner</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=audiolion" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=audiolion" title="Tests">⚠️</a> <a href="#ideas-audiolion" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://github.com/yordis"><img src="https://avatars0.githubusercontent.com/u/4237280?v=4" width="100px;" alt=""/><br /><sub><b>Yordis Prieto</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=yordis" title="Code">💻</a></td>
+    <td align="center"><a href="http://www.ncphi.com"><img src="https://avatars2.githubusercontent.com/u/824015?v=4" width="100px;" alt=""/><br /><sub><b>NCPhillips</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=ncphillips" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://github.com/ArnaudBarre"><img src="https://avatars1.githubusercontent.com/u/14235743?v=4" width="100px;" alt=""/><br /><sub><b>Arnaud Barré</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=ArnaudBarre" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=ArnaudBarre" title="Documentation">📖</a></td>
+    <td align="center"><a href="http://twitter.com/techieshark"><img src="https://avatars2.githubusercontent.com/u/1072292?v=4" width="100px;" alt=""/><br /><sub><b>Peter W</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=techieshark" title="Documentation">📖</a></td>
+    <td align="center"><a href="http://joeflateau.net"><img src="https://avatars0.githubusercontent.com/u/643331?v=4" width="100px;" alt=""/><br /><sub><b>Joe Flateau</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=joeflateau" title="Code">💻</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=joeflateau" title="Documentation">📖</a></td>
+    <td align="center"><a href="http://goznauk.github.io"><img src="https://avatars0.githubusercontent.com/u/4438903?v=4" width="100px;" alt=""/><br /><sub><b>H.John Choi</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=goznauk" title="Documentation">📖</a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://brave.com/loo095"><img src="https://avatars0.githubusercontent.com/u/85355?v=4" width="100px;" alt=""/><br /><sub><b>Jon Stevens</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=lookfirst" title="Documentation">📖</a> <a href="#ideas-lookfirst" title="Ideas, Planning, & Feedback">🤔</a> <a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Alookfirst" title="Bug reports">🐛</a></td>
+    <td align="center"><a href="https://github.com/apps/greenkeeper"><img src="https://avatars3.githubusercontent.com/in/505?v=4" width="100px;" alt=""/><br /><sub><b>greenkeeper[bot]</b></sub></a><br /><a href="#infra-greenkeeper[bot]" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=greenkeeper[bot]" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/apps/allcontributors"><img src="https://avatars0.githubusercontent.com/in/23186?v=4" width="100px;" alt=""/><br /><sub><b>allcontributors[bot]</b></sub></a><br /><a href="#infra-allcontributors[bot]" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=allcontributors[bot]" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://github.com/apps/dependabot"><img src="https://avatars0.githubusercontent.com/in/29110?v=4" width="100px;" alt=""/><br /><sub><b>dependabot[bot]</b></sub></a><br /><a href="#infra-dependabot[bot]" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="#security-dependabot[bot]" title="Security">🛡️</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=dependabot[bot]" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/about"><img src="https://avatars1.githubusercontent.com/u/9919?v=4" width="100px;" alt=""/><br /><sub><b>GitHub</b></sub></a><br /><a href="#infra-github" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
+    <td align="center"><a href="http://linkedin.com/in/ambroseus"><img src="https://avatars0.githubusercontent.com/u/380645?v=4" width="100px;" alt=""/><br /><sub><b>Eugene Samonenko</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/commits?author=ambroseus" title="Tests">⚠️</a> <a href="#example-ambroseus" title="Examples">💡</a> <a href="#question-ambroseus" title="Answering Questions">💬</a> <a href="#ideas-ambroseus" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://github.com/rockmandash"><img src="https://avatars2.githubusercontent.com/u/7580792?v=4" width="100px;" alt=""/><br /><sub><b>Joseph Wang</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Arockmandash" title="Bug reports">🐛</a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://qiita.com/kotarella1110"><img src="https://avatars1.githubusercontent.com/u/12913947?v=4" width="100px;" alt=""/><br /><sub><b>Kotaro Sugawara</b></sub></a><br /><a href="https://github.com/jaredpalmer/tsdx/issues?q=author%3Akotarella1110" title="Bug reports">🐛</a> <a href="https://github.com/jaredpalmer/tsdx/commits?author=kotarella1110" title="Code">💻</a></td>
   </tr>
 </table>
 
+<!-- markdownlint-enable -->
+<!-- prettier-ignore-end -->
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
 This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!

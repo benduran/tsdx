@@ -60,8 +60,8 @@ Creating ${chalk.bold(chalk.green(projectName))}...
 `;
 };
 
-export const start = function(projectName: string) {
-  const cmd = getInstallCmd();
+export const start = async function(projectName: string) {
+  const cmd = await getInstallCmd();
 
   const commands = {
     install: cmd === 'npm' ? 'npm install' : 'yarn install',
@@ -88,4 +88,10 @@ export const start = function(projectName: string) {
   Questions? Feedback? Please let me know!
   ${chalk.green('https://github.com/jaredpalmer/tsdx/issues')}
 `;
+};
+
+export const incorrectNodeVersion = function(requiredVersion: string) {
+  return `Unsupported Node version! Your current Node version (${chalk.red(
+    process.version
+  )}) does not satisfy the requirement of Node ${chalk.cyan(requiredVersion)}.`;
 };
